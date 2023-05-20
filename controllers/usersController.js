@@ -207,6 +207,7 @@ const loginUser = async (req, res, next) => {
     status: 200,
     message: "success",
     data: {
+      id: user._id,
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,

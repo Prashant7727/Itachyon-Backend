@@ -1,6 +1,6 @@
 const express=require('express');
 const router=express.Router();
-const handleAllUsers=require('../controllers/user')
+const handleAllUsers=require('../controllers/usersController')
 
 //post any data api
 router.post('/PostUserData',handleAllUsers.authenticateToken,handleAllUsers.postData);
@@ -34,7 +34,7 @@ router.put('/tasks/:taskId/updateTask',handleAllUsers.authenticateToken,handleAl
 
 
 //login api
-router.post('/userLogin',handleAllUsers.loginUser);
+router.post('/auth',handleAllUsers.loginUser);
 router.post('/refreshToken',handleAllUsers.refreshAccessToken);
 
 module.exports=router;
