@@ -6,8 +6,9 @@ const Task = require("../models/task");
 
 const jwt = require("jsonwebtoken");
 const JWT_SECRET = "sdhflksdhkjkjdkjvdjfdb";
+const JWT_REFRESH_SECRET="sakjdhasljddowq"
 
-//authentication for other pages
+//authentication for other pages----------------------------------------------------
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
@@ -84,7 +85,7 @@ const postData = async (req, res, next) => {
   }
 };
 
-//get user data
+//get user data-----------------------------------------------------------------
 const getData = async (req, res, next) => {
   try {
     const users = await User.find();
@@ -98,7 +99,7 @@ const getData = async (req, res, next) => {
   }
 };
 
-//get current User Data
+//get current User Data-----------------------------------------------------------
 
 const getCurrentUserData = async (req, res, next) => {
   let result = await User.findById({ _id: req.params.id });
@@ -120,7 +121,7 @@ const postTicket = (req, res, next) => {
     res.send({ status: "error" });
   }
 };
-//get ticket information
+//get ticket information-----------------------------------------------------------------------------
 const getTicketData = async (req, res, next) => {
   try {
     const users = await Ticket.find();
@@ -155,7 +156,39 @@ const getClinicData = async (req, res, next) => {
   }
 };
 
-//user login.....................................................................
+//user login and create access token.....................................................................
+// const loginUser = async (req, res, next) => {
+//   const { email, password } = req.body;
+//   const user = await UserLogin.findOne({ email });
+//   if (!user) {
+//     return res.status(401).json({ error: "Invalid email or password" });
+//   }
+//   if (user.password !== password) {
+//     return res.status(403).json({ error: "Invalid password" });
+//   }
+//   const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: "1h" });
+//   const refreshToken = jwt.sign({ userId: user._id }, "YOUR_REFRESH_SECRET", { expiresIn: "7d" });
+//   res.json({
+//     status: 200,
+//     message: "success",
+//     data: {
+//       firstName: user.firstName,
+//       lastName: user.lastName,
+//       email: user.email,
+//       phone: user.phone,
+//       userRole: user.userRole,
+//       clinicName: user.clinicName,
+//       clinicCode: user.clinicCode,
+//       clinicBlock: user.clinicBlock,
+//       token: token,
+//       refreshToken: refreshToken,
+//     },
+//   });
+// };
+const generateAccessToken = (userId) => {
+  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: "1h" });
+};
+
 const loginUser = async (req, res, next) => {
   const { email, password } = req.body;
   const user = await UserLogin.findOne({ email });
@@ -163,9 +196,10 @@ const loginUser = async (req, res, next) => {
     return res.status(401).json({ error: "Invalid email or password" });
   }
   if (user.password !== password) {
-    return res.status(403).json({ error: "Invalid  password" });
+    return res.status(403).json({ error: "Invalid password" });
   }
-  const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: "1h" });
+  const accessToken = generateAccessToken(user._id);
+  const refreshToken = jwt.sign({ userId: user._id }, JWT_REFRESH_SECRET, { expiresIn: "7d" });
   res.json({
     status: 200,
     message: "success",
@@ -178,10 +212,34 @@ const loginUser = async (req, res, next) => {
       clinicName: user.clinicName,
       clinicCode: user.clinicCode,
       clinicBlock: user.clinicBlock,
-      token: token,
+      accessToken: accessToken,
+      refreshToken: refreshToken,
     },
   });
 };
+
+// Refresh Token endpoint-------------------------------------------------------------------------------------------
+const refreshAccessToken = (req, res, next) => {
+  const { refreshToken } = req.body;
+  if (!refreshToken) {
+    return res.status(401).json({ error: "Refresh token not provided" });
+  }
+  jwt.verify(refreshToken, JWT_REFRESH_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(403).json({ error: "Invalid refresh token" });
+    }
+    const accessToken = generateAccessToken(decoded.userId);
+    res.json({
+      status: 200,
+      message: "success",
+      data: {
+        accessToken: accessToken,
+      },
+    });
+  });
+};
+
+
 
 //add task.....................................................
 
@@ -214,7 +272,7 @@ const completeTask = async (req, res) => {
   }
 };
 
-//getTask............................
+//getTask----------------------------------------------------------------------------------------------
 const getTask = async (req, res) => {
   const taskId = req.params.taskId;
 
@@ -229,6 +287,192 @@ const getTask = async (req, res) => {
     res.status(500).json({ error: "Failed to retrieve task data" });
   }
 };
+
+//getTaskData by createdBy or responsible or participant or observers-----------------------------------------------
+const getTaskData = async (req, res) => {
+  try {
+    // Check if the user is logged in
+    const loggedInUserId = req.user.userId; // Assuming the user ID is available in the request after authentication
+    console.log(loggedInUserId)
+    // Find the tasks associated with the logged-in user
+    const tasks = await Task.find({
+      $or: [
+        { createdBy: loggedInUserId },
+        { responsible: loggedInUserId },
+        { participant: loggedInUserId },
+        { observers: loggedInUserId }
+      ]
+    });
+
+    if (tasks.length === 0) {
+      return res.status(404).json({ error: 'No tasks found for the user' });
+    }
+
+    // Return the task data in the response
+    res.json({
+      status: 200,
+      message: 'success',
+      data: tasks
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to retrieve task data' });
+  }
+};
+
+  
+
+//getTask by status-------------------------------------------------------------------------------
+const getTaskByStatus = async (req, res) => {
+  try {
+    // Check if the user is logged in
+    const loggedInUserId = req.user.userId; // Assuming the user ID is available in the request after authentication
+
+    const { status } = req.params; // Assuming the status is provided as a query parameter
+
+    // Find the tasks associated with the logged-in user and matching status
+    const tasks = await Task.find({
+      $or: [
+        { createdBy: loggedInUserId },
+        { responsible: loggedInUserId },
+        { participant: loggedInUserId },
+        { observers: loggedInUserId }
+      ],
+      status: status // Filter tasks based on the provided status
+    });
+
+    if (tasks.length === 0) {
+      return res.status(404).json({ error: "No tasks found with the given status" });
+    }
+
+    res.status(200).json(tasks);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to retrieve task data" });
+  }
+};
+
+// const getTaskByStatus = async (req, res) => {
+//   const status = req.params.status;
+
+//   try {
+//     const tasks = await Task.find({ status: status });
+
+//     if (tasks.length === 0) {
+//       return res.status(404).json({ error: "No tasks found with the given status" });
+//     }
+
+//     res.status(200).json(tasks);
+//   } catch (error) {
+//     res.status(500).json({ error: "Failed to retrieve task data" });
+//   }
+// };
+
+
+//gettingTaskData for 30days-----------------------------------------------------------------------------------------------
+const getTaskDataLast30Days = async (req, res) => {
+  try {
+    const loggedInUserId = req.user.userId
+    console.log(loggedInUserId);
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const tasks = await Task.find({
+      $or: [
+        { createdBy: loggedInUserId },
+        { responsible: loggedInUserId },
+        { participant: loggedInUserId },
+        { observers: loggedInUserId }
+      ],
+      dateCreated: { $gte: thirtyDaysAgo }
+    });
+
+    if (tasks.length === 0) {
+      return res.status(404).json({ error: 'No tasks found within the last 30 days' });
+    }
+
+    res.json({
+      status: 200,
+      message: 'success',
+      data: tasks
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to retrieve task data', details: error.message });
+  }
+};
+const getTaskDataLast7Days = async (req, res) => {
+  try {
+    const loggedInUserId = req.user.userId
+    console.log(loggedInUserId);
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 7);
+
+    const tasks = await Task.find({
+      $or: [
+        { createdBy: loggedInUserId },
+        { responsible: loggedInUserId },
+        { participant: loggedInUserId },
+        { observers: loggedInUserId }
+      ],
+      dateCreated: { $gte: thirtyDaysAgo }
+    });
+
+    if (tasks.length === 0) {
+      return res.status(404).json({ error: 'No tasks found within the last 30 days' });
+    }
+
+    res.json({
+      status: 200,
+      message: 'success',
+      data: tasks
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to retrieve task data', details: error.message });
+  }
+};
+
+const getTaskByRole = async (req, res) => {
+  const { createdBy, responsible, participant, observers } = req.query;
+
+  try {
+    if (!createdBy && !responsible && !participant && !observers) {
+      return res.status(400).json({ error: 'err' });
+    }
+
+    const query = {};
+
+    if (createdBy) {
+      query.createdBy = createdBy;
+    }
+
+    if (responsible) {
+      query.responsible = responsible;
+    }
+
+    if (participant) {
+      query.participant = participant;
+    }
+
+    if (observers) {
+      query.observers = observers;
+    }
+
+    const tasks = await Task.find(query);
+    
+    if (tasks.length === 0) {
+      return res.status(404).json({ error: 'No tasks found' });
+    }
+
+    res.status(200).json(tasks);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to retrieve task data' });
+  }
+};
+
+
+
+
 
 //pause task....................................................
 const pauseTask = async (req, res) => {
@@ -330,16 +574,24 @@ const updateTask=async (req, res) => {
 };
 
 
+
+
 module.exports = {
   postData,
   postTicket,
   postClinic,
+  refreshAccessToken,
 
   getData,
   getCurrentUserData,
   getTicketData,
   getClinicData,
   getTask,
+  getTaskByStatus,
+  getTaskByRole,
+  getTaskData,
+  getTaskDataLast30Days,
+  getTaskDataLast7Days,
 
   loginUser,
   authenticateToken,
@@ -349,5 +601,5 @@ module.exports = {
   renewTask,
   addResultFromComment,
   startTask,
-  updateTask
+  updateTask,
 };

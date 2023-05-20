@@ -9,6 +9,7 @@ const userSchema=new mongoose.Schema({
     block:{
         type:String
     },
+    
     email:{
         type:String
     },

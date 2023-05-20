@@ -9,11 +9,11 @@ const taskSchema = new mongoose.Schema({
   repeatTask: { type: String, enum: ['Y', 'N'], default: 'N' },
   project: { type: Number, default: 0 },
   stage: { type: Number, default: 0 },
-  createdBy: { type: Number },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserLogin' },
   dateCreated: { type: Date },
-  responsible: { type: Number },
-  participant: { type: [Number], default: [] },
-  observers: { type: [Number], default: [] },
+  responsible: [{ type: mongoose.Schema.Types.ObjectId, ref: 'UserLogin' }],
+  participant: [{ type: mongoose.Schema.Types.ObjectId, ref: 'UserLogin' }],
+  observers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'UserLogin' }],
   modifiedBy: { type: Number },
   modifiedOn: { type: Date },
   statusModifiedBy: { type: Number },
@@ -52,6 +52,6 @@ const taskSchema = new mongoose.Schema({
   results: { type: [String], default: [] } // Add the results field
 });
 
-const User = mongoose.model('Task', taskSchema);
+const Task = mongoose.model('Task', taskSchema);
 
-module.exports = User;
+module.exports = Task;

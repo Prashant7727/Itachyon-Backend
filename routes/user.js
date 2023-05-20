@@ -14,6 +14,14 @@ router.get('/GetCurrentUserData/:id',handleAllUsers.authenticateToken,handleAllU
 router.get('/GetTicketData',handleAllUsers.authenticateToken,handleAllUsers.getTicketData);
 router.get('/GetClinicData',handleAllUsers.authenticateToken,handleAllUsers.getClinicData);
 router.get('/tasks/:taskId',handleAllUsers.authenticateToken,handleAllUsers.getTask);
+router.get('/tasks/filter',handleAllUsers.authenticateToken,handleAllUsers.getTaskByRole);
+//http://localhost:8000/tasks/filter?createdBy=B sir
+router.get('/tasks/',handleAllUsers.authenticateToken,handleAllUsers.getTaskData);
+router.get('/tasks/status/:status',handleAllUsers.authenticateToken,handleAllUsers.getTaskByStatus);
+router.get('/getTaskDataLast30Days',handleAllUsers.authenticateToken,handleAllUsers.getTaskDataLast30Days);
+router.get('/getTaskDataLast7Days',handleAllUsers.authenticateToken,handleAllUsers.getTaskDataLast7Days);
+// router.get('/tasks/bydaterange',handleAllUsers.authenticateToken,handleAllUsers.getTaskDataByDateRange);
+
 
 
 //put any data api
@@ -27,4 +35,6 @@ router.put('/tasks/:taskId/updateTask',handleAllUsers.authenticateToken,handleAl
 
 //login api
 router.post('/userLogin',handleAllUsers.loginUser);
+router.post('/refreshToken',handleAllUsers.refreshAccessToken);
+
 module.exports=router;
