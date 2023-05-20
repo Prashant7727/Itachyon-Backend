@@ -189,13 +189,16 @@ const generateAccessToken = (userId) => {
   return jwt.sign({ userId }, JWT_SECRET, { expiresIn: "1h" });
 };
 
+const bcrypt = require('bcrypt');
+
 const loginUser = async (req, res, next) => {
   const { email, password } = req.body;
   const user = await UserLogin.findOne({ email });
   if (!user) {
     return res.status(401).json({ error: "Invalid email or password" });
   }
-  if (user.password !== password) {
+  const passwordMatch = await bcrypt.compare(password, user.password);
+  if (!passwordMatch) {
     return res.status(403).json({ error: "Invalid password" });
   }
   const accessToken = generateAccessToken(user._id);
@@ -217,6 +220,7 @@ const loginUser = async (req, res, next) => {
     },
   });
 };
+
 
 // Refresh Token endpoint-------------------------------------------------------------------------------------------
 const refreshAccessToken = (req, res, next) => {
